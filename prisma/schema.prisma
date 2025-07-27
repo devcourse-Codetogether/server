@@ -12,8 +12,6 @@ model User {
   kakaoId      String    @unique
   nickname     String
   refreshToken String?
-  sessions     Session[] @relation("SessionOwner")
-  joined       Session[] @relation("SessionParticipants")
   createdAt    DateTime  @default(now())
 }
 
