@@ -7,7 +7,7 @@ export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
   @Post('kakao')
-  loginWithKakao(@Body() dto: LoginKakaoDto) {
-    return this.authService.loginWithKakao(dto.access_token);
+  async kakaoLogin(@Body('code') code: string) {
+    return this.authService.loginWithKakao(code);
   }
 }

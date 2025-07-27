@@ -12,12 +12,12 @@ export class UserService {
   async getMySessions(userId: number) {
     return this.userRepository.findUserSessions(userId);
   }
-  async findByKakaoId(kakaoId: string) {
+  async findByKakaoId(kakaoId: number) {
     return this.prisma.user.findUnique({
       where: { kakaoId },
     });
   }
-  async createWithKakao(data: { kakaoId: string; nickname: string }) {
+  async createWithKakao(data: { kakaoId: number; nickname: string }) {
     return this.prisma.user.create({
       data,
     });
