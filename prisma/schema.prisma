@@ -9,7 +9,7 @@ datasource db {
 
 model User {
   id           Int       @id @default(autoincrement())
-  kakaoId      String    @unique
+  kakaoId      Int    @unique
   nickname     String
   refreshToken String?
   sessions     Session[] @relation("SessionOwner")
