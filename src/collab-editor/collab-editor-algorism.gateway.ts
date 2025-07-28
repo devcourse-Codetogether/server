@@ -10,12 +10,19 @@ import {
 import { Server, Socket } from 'socket.io';
 import * as Y from 'yjs';
 
+interface Message {
+  time: string;
+  sender: 'me' | 'other';
+  text: string;
+  name: string;
+}
+
 // namespace :collab-algorism(알고리즘 문제 풀이)
 @WebSocketGateway({
   namespace: '/collab-algorism',
   cors: {
-    origin: 'http://localhost:5173', // ✅ 반드시 명시
-    credentials: true, // ✅ 클라이언트에서 withCredentials: true 쓸 때만
+    origin: 'http://localhost:5173', // 반드시 명시
+    credentials: true, // 클라이언트에서 withCredentials: true 쓸 때만
   },
 })
 export class CollabEditorAlgorismGateway implements OnGatewayConnection, OnGatewayDisconnect {
@@ -41,13 +48,10 @@ export class CollabEditorAlgorismGateway implements OnGatewayConnection, OnGatew
   }
 
   @SubscribeMessage('join')
-  onJoin(
-    @MessageBody() payload: { roomId: string; awarenessId: number },
-    @ConnectedSocket() client: Socket,
-  ) {
-    const { roomId, awarenessId } = payload;
+  onJoin(@MessageBody() payload: { roomId: string }, @ConnectedSocket() client: Socket) {
+    const { roomId } = payload;
     client.join(roomId);
-    console.log('Join Socket Id: ', client.id, awarenessId);
+    console.log('Join Socket Id: ', client.id);
 
     //서버에 해당 방에 대한 Yjs 문서가 아직 없다면
     if (!this.docs.has(roomId)) {
@@ -89,16 +93,31 @@ export class CollabEditorAlgorismGateway implements OnGatewayConnection, OnGatew
 
   // awareness update
   @SubscribeMessage('awareness-update')
-  handleAwarenessUpdate(
+  onAwarenessUpdate(
     @ConnectedSocket() client: Socket,
     @MessageBody() payload: { roomId: string; update: Uint8Array },
   ) {
     const { roomId, update } = payload;
     this.awarenessStates.set(client.id, update);
 
-    console.log('awarenessStates:', this.awarenessStates);
-
     // 같은 방의 다른 사용자에게 전달
     client.to(roomId).emit('awareness-update', update);
+  }
+
+  // awareness update
+  @SubscribeMessage('chat')
+  onChat(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() payload: { roomId: string; newMessage: Message },
+  ) {
+    const roomId = payload.roomId;
+
+    let newMessage = payload.newMessage;
+
+    newMessage = { ...newMessage, sender: 'other' };
+
+    console.log(newMessage);
+    // 같은 방의 다른 사용자에게 전달
+    client.to(roomId).emit('chat', newMessage);
   }
 }
