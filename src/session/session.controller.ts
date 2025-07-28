@@ -1,7 +1,16 @@
-import { Body, Controller, Get, Patch, Post, Query, Param, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Patch,
+  Post,
+  Query,
+  Param,
+  UseGuards,
+  ParseIntPipe,
+} from '@nestjs/common';
 import { SessionService } from './session.service';
 import { CreateSessionDto } from './dto/create-session.dto';
-import { JoinSessionDto } from './dto/join-session.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { User } from '../user/decorators/user.decorator';
 import { UserDto } from '../user/dto/user.dto';
@@ -22,9 +31,9 @@ export class SessionController {
   }
 
   @UseGuards(JwtAuthGuard)
-  @Post('join')
-  joinSession(@User() user: UserDto, @Body() dto: JoinSessionDto) {
-    return this.sessionService.joinSession(user.id, dto.joinCode);
+  @Post(':id/join')
+  joinSessionById(@User() user: UserDto, @Param('id', ParseIntPipe) sessionId: number) {
+    return this.sessionService.joinSessionById(user.id, sessionId);
   }
 
   @UseGuards(JwtAuthGuard)

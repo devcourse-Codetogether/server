@@ -4,6 +4,7 @@ import { firstValueFrom } from 'rxjs';
 import { JwtService } from '@nestjs/jwt';
 import { UserService } from '../user/user.service';
 import { User } from '@prisma/client';
+import { PrismaService } from 'src/prisma/prisma.service';
 
 @Injectable()
 export class AuthService {
@@ -11,6 +12,7 @@ export class AuthService {
     private readonly httpService: HttpService,
     private readonly jwtService: JwtService,
     private readonly userService: UserService,
+    private readonly prisma: PrismaService,
   ) {}
 
   async loginWithKakao(code: string) {
@@ -53,7 +55,7 @@ export class AuthService {
     const payload = { sub: userId };
     return this.jwtService.sign(payload, {
       secret: process.env.JWT_SECRET,
-      expiresIn: '15m',
+      expiresIn: '1h',
     });
   }
 

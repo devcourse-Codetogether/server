@@ -3,7 +3,7 @@ import { AuthService } from './auth.service';
 import { Response, Request } from 'express';
 import { JwtRefreshGuard } from './guards/jwt-refresh.guard';
 import { UserService } from '../user/user.service';
-import { RefreshRequest } from './types';
+import { RefreshRequest } from './types/types';
 
 @Controller('auth')
 export class AuthController {

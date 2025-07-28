@@ -9,6 +9,12 @@ export class UserService {
     private readonly prisma: PrismaService,
   ) {}
 
+  async findById(userId: number) {
+    return this.prisma.user.findUnique({
+      where: { id: userId },
+    });
+  }
+
   async getMySessions(userId: number) {
     return this.userRepository.findUserSessions(userId);
   }

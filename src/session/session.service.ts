@@ -48,9 +48,9 @@ export class SessionService {
     };
   }
 
-  async joinSession(userId: number, joinCode: string) {
+  async joinSessionById(userId: number, sessionId: number) {
     const session = await this.prisma.session.findUnique({
-      where: { joinCode },
+      where: { id: sessionId },
       include: { participants: true },
     });
 
@@ -58,17 +58,24 @@ export class SessionService {
       throw new NotFoundException('세션이 존재하지 않거나 종료되었습니다.');
     }
 
-    await this.prisma.session.update({
-      where: { id: session.id },
-      data: {
-        participants: { connect: { id: userId } },
-      },
-    });
+    // 이미 참가한 유저인지 확인
+    const alreadyJoined = session.participants.some(p => p.id === userId);
+    if (!alreadyJoined) {
+      await this.prisma.session.update({
+        where: { id: sessionId },
+        data: {
+          participants: { connect: { id: userId } },
+        },
+      });
+    }
 
     return {
       id: session.id,
       title: session.title,
-      participants: session.participants.map(p => ({ id: p.id, nickname: p.nickname })),
+      participants: session.participants.map(p => ({
+        id: p.id,
+        nickname: p.nickname,
+      })),
     };
   }
 
