@@ -3,6 +3,7 @@ import { HttpService } from '@nestjs/axios';
 import { firstValueFrom } from 'rxjs';
 import { JwtService } from '@nestjs/jwt';
 import { UserService } from '../user/user.service';
+import { User } from '@prisma/client';
 
 @Injectable()
 export class AuthService {
@@ -13,12 +14,12 @@ export class AuthService {
   ) {}
 
   async loginWithKakao(code: string) {
-    const accessToken = await this.fetchAccessToken(code);
-    if (!accessToken) {
+    const accessTokenFromKakao = await this.fetchAccessToken(code);
+    if (!accessTokenFromKakao) {
       throw new UnauthorizedException('Access token 발급 실패');
     }
 
-    const kakaoUser = await this.fetchKakaoUser(accessToken);
+    const kakaoUser = await this.fetchKakaoUser(accessTokenFromKakao);
     if (!kakaoUser) {
       throw new UnauthorizedException('카카오 사용자 정보를 불러올 수 없습니다.');
     }
@@ -31,16 +32,49 @@ export class AuthService {
       user = await this.userService.createWithKakao({ kakaoId: id, nickname });
     }
 
-    const payload = { sub: user.id };
-    const token = this.jwtService.sign(payload);
+    // 토큰 생성
+    const accessToken = this.generateAccessToken(user.id);
+    const refreshToken = this.generateRefreshToken(user.id);
+
+    // Refresh Token DB 저장
+    await this.userService.updateRefreshToken(user.id, refreshToken);
 
     return {
-      token,
+      accessToken,
       user: {
         id: user.id,
         nickname: user.nickname,
       },
+      refreshToken, // 추후 쿠키로 전달할 것
     };
+  }
+
+  generateAccessToken(userId: number): string {
+    const payload = { sub: userId };
+    return this.jwtService.sign(payload, {
+      secret: process.env.JWT_SECRET,
+      expiresIn: '15m',
+    });
+  }
+
+  generateRefreshToken(userId: number): string {
+    const payload = { sub: userId };
+    return this.jwtService.sign(payload, {
+      secret: process.env.JWT_REFRESH_SECRET,
+      expiresIn: '7d',
+    });
+  }
+
+  async validateRefreshToken(userId: number, token: string): Promise<User> {
+    const user = await this.userService.findById(userId);
+    if (!user || user.refreshToken !== token) {
+      throw new UnauthorizedException('Refresh Token 불일치');
+    }
+    return user;
+  }
+
+  async removeRefreshToken(userId: number) {
+    await this.userService.removeRefreshToken(userId);
   }
 
   private async fetchAccessToken(code: string): Promise<string | null> {
@@ -58,9 +92,7 @@ export class AuthService {
     try {
       const res = await firstValueFrom(
         this.httpService.post(url, body.toString(), {
-          headers: {
-            'Content-Type': 'application/x-www-form-urlencoded',
-          },
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         }),
       );
       return res.data.access_token;
@@ -76,9 +108,7 @@ export class AuthService {
     try {
       const res = await firstValueFrom(
         this.httpService.get(url, {
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-          },
+          headers: { Authorization: `Bearer ${accessToken}` },
         }),
       );
       return res.data;
