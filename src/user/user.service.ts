@@ -9,6 +9,12 @@ export class UserService {
     private readonly prisma: PrismaService,
   ) {}
 
+  async findById(userId: number) {
+    return this.prisma.user.findUnique({
+      where: { id: userId },
+    });
+  }
+
   async getMySessions(userId: number) {
     return this.userRepository.findUserSessions(userId);
   }
@@ -20,6 +26,19 @@ export class UserService {
   async createWithKakao(data: { kakaoId: number; nickname: string }) {
     return this.prisma.user.create({
       data,
+    });
+  }
+  async updateRefreshToken(userId: number, token: string): Promise<void> {
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { refreshToken: token },
+    });
+  }
+
+  async removeRefreshToken(userId: number): Promise<void> {
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { refreshToken: null },
     });
   }
 }
