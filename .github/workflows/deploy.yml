@@ -2,7 +2,7 @@ name: Deploy to EC2
 
 on:
   push:
-    branches: [dev]
+    branches: [main]
 
 jobs:
   deploy:
@@ -12,7 +12,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      - name: Deploy to EC2
+      - name: Deploy to EC2 via SSH
         uses: appleboy/ssh-action@v1.0.0
         with:
           host: ${{ secrets.EC2_HOST }}
@@ -22,5 +22,8 @@ jobs:
             cd ~/server
             git reset --hard
             git pull origin dev --rebase
+
+            echo "${{ secrets.ENV_FILE }}" > .env
+
             docker compose down
             docker compose up -d --build
