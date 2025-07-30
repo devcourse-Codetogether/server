@@ -20,6 +20,7 @@ jobs:
           key: ${{ secrets.EC2_KEY }}
           script: |
             cd ~/server
-            git pull origin dev
+            git reset --hard
+            git pull origin dev --rebase
             docker compose down
             docker compose up -d --build
