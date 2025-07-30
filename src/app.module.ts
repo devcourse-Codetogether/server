@@ -6,10 +6,12 @@ import { AuthModule } from './auth/auth.module';
 import { UserModule } from './user/user.module';
 import { CodeModule } from './code/code.module';
 import { SessionModule } from './session/session.module';
+import { CollabEditorWebpublishGateway } from './collab-editor/collab-editor-webpublish.gateway';
+import { CollabEditorAlgorismGateway } from './collab-editor/collab-editor-algorism.gateway';
 
 @Module({
   imports: [PrismaModule, AuthModule, UserModule, CodeModule, SessionModule],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [AppService, CollabEditorWebpublishGateway, CollabEditorAlgorismGateway],
 })
 export class AppModule {}
