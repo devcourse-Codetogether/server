@@ -7,8 +7,10 @@ RUN npm install
 
 COPY . .
 
+# prisma generate 추가
+RUN npx prisma generate
+
+# NestJS build
 RUN npm run build
 
 CMD ["node", "dist/main"]
-
-EXPOSE 3000
