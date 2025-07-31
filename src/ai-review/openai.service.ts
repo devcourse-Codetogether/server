@@ -4,7 +4,7 @@ import axios from 'axios';
 @Injectable()
 export class OpenAiService {
   private readonly apiKey = process.env.OPENAI_API_KEY;
-  private readonly model = process.env.OPENAI_MODEL || 'gpt-4'; // 모델을 지정
+  private readonly model = process.env.OPENAI_MODEL || 'gpt-4o-mini'; // 모델을 지정
 
   async send(prompt: string): Promise<string> {
     const url = 'https://api.openai.com/v1/chat/completions';
