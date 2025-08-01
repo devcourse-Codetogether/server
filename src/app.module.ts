@@ -8,9 +8,10 @@ import { CodeModule } from './code/code.module';
 import { SessionModule } from './session/session.module';
 import { CollabEditorWebpublishGateway } from './collab-editor/collab-editor-webpublish.gateway';
 import { CollabEditorAlgorismGateway } from './collab-editor/collab-editor-algorism.gateway';
+import { AiReviewModule } from './ai-review/ai-review.module';
 
 @Module({
-  imports: [PrismaModule, AuthModule, UserModule, CodeModule, SessionModule],
+  imports: [PrismaModule, AuthModule, UserModule, CodeModule, SessionModule, AiReviewModule],
   controllers: [AppController],
   providers: [AppService, CollabEditorWebpublishGateway, CollabEditorAlgorismGateway],
 })
