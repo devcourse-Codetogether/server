@@ -8,6 +8,7 @@ import {
   WebSocketServer,
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
+import { RedisCacheService } from 'src/redis-cache/redis-cache.service';
 import * as Y from 'yjs';
 
 interface Message {
@@ -26,6 +27,8 @@ interface Message {
   },
 })
 export class CollabEditorAlgorismGateway implements OnGatewayConnection, OnGatewayDisconnect {
+  constructor(private readonly redis: RedisCacheService) {}
+
   @WebSocketServer()
   server: Server;
 
@@ -36,6 +39,7 @@ export class CollabEditorAlgorismGateway implements OnGatewayConnection, OnGatew
   private awarenessStates = new Map<string, Uint8Array>(); // socket.id → awareness 상태
 
   handleConnection(client: Socket) {
+    this.redis.setData('redis 테스트(과연 성공하는가..)');
     console.log('🔌 클라이언트 연결됨:', client.id);
   }
 
@@ -50,8 +54,36 @@ export class CollabEditorAlgorismGateway implements OnGatewayConnection, OnGatew
   @SubscribeMessage('join')
   onJoin(@MessageBody() payload: { roomId: string }, @ConnectedSocket() client: Socket) {
     const { roomId } = payload;
+    console.log('Join event');
     client.join(roomId);
     console.log('Join Socket Id: ', client.id);
+
+    //서버에 해당 방에 대한 Yjs 문서가 아직 없다면
+    if (!this.docs.has(roomId)) {
+      //새 Yjs 문서를 생성해서 Map<string, Y.Doc>에 저장해둡니다.
+      let doc = this.docs.get(roomId);
+      if (!doc) {
+        doc = new Y.Doc();
+        this.docs.set(roomId, doc);
+      }
+    }
+    //문서의 전체 상태를 담고 있음
+    const doc = this.docs.get(roomId)!;
+
+    //doc 전체 상태를 직렬화해서 Uint8Array형식으로 변환
+    const update = Y.encodeStateAsUpdate(doc);
+
+    client.emit('sync', update); // 문서 초기 상태 전송
+
+    // 새로 들어온 사용자에게 기존 사용자들 마우스 커서 상태 전송
+    this.awarenessStates.forEach(awarenessUpdate => {
+      client.emit('awareness-update', awarenessUpdate);
+    });
+  }
+
+  @SubscribeMessage('sync')
+  onSync(@MessageBody() payload: { roomId: string }, @ConnectedSocket() client: Socket) {
+    const { roomId } = payload;
 
     //서버에 해당 방에 대한 Yjs 문서가 아직 없다면
     if (!this.docs.has(roomId)) {
@@ -83,6 +115,8 @@ export class CollabEditorAlgorismGateway implements OnGatewayConnection, OnGatew
     @ConnectedSocket() client: Socket,
   ) {
     const { roomId, update } = payload;
+    console.log('roomId:', roomId, 'update:', update);
+
     const doc = this.docs.get(roomId);
     if (!doc) return;
 
