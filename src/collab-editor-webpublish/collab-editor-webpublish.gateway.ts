@@ -11,11 +11,10 @@ import { Server, Socket } from 'socket.io';
 import { RedisCacheService } from 'src/redis-cache/redis-cache.service';
 import * as Y from 'yjs';
 
-interface Message {
+export interface Message {
+  nickname: string;
   time: string;
-  sender: 'me' | 'other';
-  text: string;
-  name: string;
+  content: string;
 }
 
 @WebSocketGateway({
@@ -30,43 +29,14 @@ export class CollabEditorWebpublishGateway implements OnGatewayConnection, OnGat
   @WebSocketServer()
   server: Server;
 
-  // 각 방마다 Y.Doc 저장
-  private docs = new Map<string, Y.Doc>();
-
-  // awareness 값(추후에 redis로 관리)
-  private awarenessStates = new Map<string, Uint8Array>(); // socket.id → awareness 상태
-
   handleConnection(client: Socket) {
-    //redis 테스트
-    this.redis.setData('redis 테스트(과연 성공하는가..)');
     console.log('🔌 collab-webpublish- 클라이언트 연결됨:', client.id);
 
     console.log('🔌 [webpublish] 연결됨:', client.id, client.nsp.name);
-
-    console.log('사이즈:', this.docs.size);
-
-    this.docs.forEach((doc, key) => {
-      console.log('문서 내용이 안보이네?');
-      const ytext = doc.getText('index.html');
-      console.log('문서 내용:', key, ytext.toString());
-    });
   }
 
   async handleDisconnect(client: Socket) {
-    console.log(this.awarenessStates);
     console.log(`❌ 연결 끊김: ${client.id}`);
-
-    this.docs.forEach((doc, key) => {
-      const ytext = doc.getText('index.html');
-      console.log('문서 내용:', key, ytext.toString());
-    });
-
-    // 데이터 삭제
-    this.awarenessStates.delete(client.id);
-
-    // redis 테스트
-    const result = await this.redis.getData();
-    console.log('result:', result);
   }
 
   @SubscribeMessage('join')
@@ -75,32 +45,10 @@ export class CollabEditorWebpublishGateway implements OnGatewayConnection, OnGat
     console.log('Join event');
     client.join(roomId);
     console.log('Join Socket Id: ', client.id);
-
-    // //서버에 해당 방에 대한 Yjs 문서가 아직 없다면
-    // if (!this.docs.has(roomId)) {
-    //   //새 Yjs 문서를 생성해서 Map<string, Y.Doc>에 저장해둡니다.
-    //   let doc = this.docs.get(roomId);
-    //   if (!doc) {
-    //     doc = new Y.Doc();
-    //     this.docs.set(roomId, doc);
-    //   }
-    // }
-    // //문서의 전체 상태를 담고 있음
-    // const doc = this.docs.get(roomId)!;
-
-    // //doc 전체 상태를 직렬화해서 Uint8Array형식으로 변환
-    // const update = Y.encodeStateAsUpdate(doc);
-
-    // client.emit('sync', update); // 문서 초기 상태 전송
-
-    // // 새로 들어온 사용자에게 기존 사용자들 마우스 커서 상태 전송
-    // this.awarenessStates.forEach(awarenessUpdate => {
-    //   client.emit('awareness-update', awarenessUpdate);
-    // });
   }
 
   @SubscribeMessage('sync')
-  onSync(
+  async onSync(
     @MessageBody() payload: { roomId: string; fileName: string },
     @ConnectedSocket() client: Socket,
   ) {
@@ -109,63 +57,64 @@ export class CollabEditorWebpublishGateway implements OnGatewayConnection, OnGat
     const key = `ydoc-${roomId}-${fileName}`;
 
     console.log('데이터 동기화:', key);
-    //서버에 해당 방에 대한 Yjs 문서가 아직 없다면
-    if (!this.docs.has(key)) {
-      console.log('설마 키가 없다고 뜨는거야?');
-      //새 Yjs 문서를 생성해서 Map<string, Y.Doc>에 저장해둡니다.
-      let doc = this.docs.get(key);
-      if (!doc) {
-        console.log('설마 문서도 없다고 뜨는거야');
-        doc = new Y.Doc();
-        this.docs.set(key, doc);
-      }
-    }
-    //문서의 전체 상태를 담고 있음
-    const doc = this.docs.get(key)!;
-    this.docs.forEach((doc, key) => {
-      console.log(key, doc);
-    });
+    let docUint8 = await this.redis.redisGetDoc(key);
+    let update;
 
-    //doc 전체 상태를 직렬화해서 Uint8Array형식으로 변환
-    const update = Y.encodeStateAsUpdate(doc);
+    //서버에 해당 방에 대한 Yjs 문서가 아직 없다면
+    if (!docUint8) {
+      const doc = new Y.Doc();
+      //doc 전체 상태를 직렬화해서 Uint8Array형식으로 변환
+      update = Y.encodeStateAsUpdate(doc);
+      await this.redis.redisUpdateDoc(key, update);
+    } else {
+      update = docUint8;
+    }
 
     console.log('동기화 Yjs문서:', update);
     client.emit('sync', update); // 문서 초기 상태 전송
 
     // 새로 들어온 사용자에게 기존 사용자들 마우스 커서 상태 전송
     // 특정 roomId 및 channel에 해당하는 값만 전송
-    this.awarenessStates.forEach((awarenessUpdate, key) => {
-      // key 형식: awareness-roomId-filename-clientId
-      if (key.startsWith(`awareness-${roomId}-${fileName}`)) {
+    const Awarenesskey = `awareness-${roomId}-${fileName}*`;
+
+    const syncAwareness = await this.redis.redisGetSyncAwareness(Awarenesskey);
+
+    if ((await syncAwareness).length > 0) {
+      (await syncAwareness).map(awarenessUpdate => {
+        console.log('awreness:', awarenessUpdate);
         client.emit('awareness-update', awarenessUpdate);
-      }
-    });
+      });
+    } else {
+    }
+
+    // chat 데이터 동기화 (배열 가져오기)
+    const syncChat = await this.redis.redisGetChat(roomId);
+    if (syncChat) client.emit('chat-sync', syncChat);
   }
 
   //  yjs update
   @SubscribeMessage('update')
-  onUpdate(
+  async onUpdate(
     @MessageBody() payload: { roomId: string; fileName: string; update: Uint8Array },
     @ConnectedSocket() client: Socket,
   ) {
     const { roomId, fileName, update } = payload;
-    console.log('roomId:', roomId, 'filename:', fileName, 'update:', update);
+    console.log('roomId:', roomId, 'filename:', fileName, 'update:', new Uint8Array(update));
 
     const key = `ydoc-${roomId}-${fileName}`;
 
     console.log('key:', key);
 
-    const doc = this.docs.get(key);
-    if (!doc) return;
+    await this.redis.redisUpdateDoc(key, update);
 
     // Uint8Array 형태로 반영
-    Y.applyUpdate(doc, update); // 서버에 상태 반영
+    // Y.applyUpdate(doc, update); // 서버에 상태 반영
     client.to(roomId).emit('update', update); // 같은 방 사용자에게 브로드캐스트
   }
 
   // awareness update
   @SubscribeMessage('awareness-update')
-  onAwarenessUpdate(
+  async onAwarenessUpdate(
     @ConnectedSocket() client: Socket,
     @MessageBody() payload: { roomId: string; fileName: string; update: Uint8Array },
   ) {
@@ -174,27 +123,28 @@ export class CollabEditorWebpublishGateway implements OnGatewayConnection, OnGat
     const key = `awareness-${client.id}-${roomId}-${fileName}`;
     console.log('awareness update:', key);
 
-    this.awarenessStates.set(key, update);
+    await this.redis.redisUpdateAwareness(key, update);
+
     // 같은 방의 다른 사용자에게 전달
     client.to(roomId).emit('awareness-update', { update, fileName });
   }
 
   // awareness remove
   @SubscribeMessage('awareness-remove')
-  onAwarenessRemove(@ConnectedSocket() client: Socket, @MessageBody() payload: { roomId: string }) {
+  async onAwarenessRemove(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() payload: { roomId: string },
+  ) {
     const { roomId } = payload;
 
-    for (const key of this.awarenessStates.keys()) {
-      if (key.startsWith(`awareness-${client.id}-${roomId}-`)) {
-        console.log('삭제할 키:', key);
-        this.awarenessStates.delete(key);
-      }
-    }
+    const key = `awareness-${client.id}-${roomId}*`;
+
+    await this.redis.redisDeleteAwareness(key);
   }
 
-  // awareness chat
+  // chat
   @SubscribeMessage('chat')
-  onChat(
+  async onChat(
     @ConnectedSocket() client: Socket,
     @MessageBody() payload: { roomId: string; newMessage: Message },
   ) {
@@ -202,9 +152,12 @@ export class CollabEditorWebpublishGateway implements OnGatewayConnection, OnGat
 
     let newMessage = payload.newMessage;
 
-    newMessage = { ...newMessage, sender: 'other' };
+    console.log('문자 메시지:', newMessage);
 
-    console.log(newMessage);
+    const key = roomId;
+    // 기존 배열이 있으면 가져오고, 없으면 새 배열 생성
+    await this.redis.redisUpdateChat(key, newMessage);
+
     // 같은 방의 다른 사용자에게 전달
     client.to(roomId).emit('chat', newMessage);
   }

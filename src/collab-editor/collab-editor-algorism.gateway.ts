@@ -39,7 +39,6 @@ export class CollabEditorAlgorismGateway implements OnGatewayConnection, OnGatew
   private awarenessStates = new Map<string, Uint8Array>(); // socket.id → awareness 상태
 
   handleConnection(client: Socket) {
-    this.redis.setData('redis 테스트(과연 성공하는가..)');
     console.log('🔌 클라이언트 연결됨:', client.id);
   }
 
