@@ -1,0 +1,63 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           Int           @id @default(autoincrement())
+  kakaoId      BigInt        @unique
+  nickname     String
+  refreshToken String?
+  sessions     Session[]     @relation("SessionOwner")
+  joined       Session[]     @relation("SessionParticipants")
+  chatMessages ChatMessage[]
+  codeLogs     CodeLog[]     // ← 추가
+  createdAt    DateTime      @default(now())
+}
+
+model Session {
+  id           Int           @id @default(autoincrement())
+  title        String
+  mode         String
+  language     String
+  joinCode     String        @unique
+  isEnded      Boolean       @default(false)
+  ownerId      Int
+  owner        User          @relation("SessionOwner", fields: [ownerId], references: [id])
+  participants User[]        @relation("SessionParticipants")
+  chatLogs     Json?
+  chatMessages ChatMessage[]
+  codeLogs     CodeLog[]     // ← 추가
+  createdAt    DateTime      @default(now())
+}
+
+model ChatMessage {
+  id         Int       @id @default(autoincrement())
+  session    Session   @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  sessionId  Int
+  sender     User      @relation(fields: [senderId], references: [id], onDelete: Cascade)
+  senderId   Int
+  message    String
+  createdAt  DateTime  @default(now())
+
+  @@index([sessionId])
+  @@index([senderId])
+}
+
+model CodeLog {
+  id         Int       @id @default(autoincrement())
+  session    Session   @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  sessionId  Int
+  sender     User      @relation(fields: [senderId], references: [id], onDelete: Cascade)
+  senderId   Int
+  code       String
+  language   String
+  createdAt  DateTime  @default(now())
+
+  @@index([sessionId])
+  @@index([senderId])
+}

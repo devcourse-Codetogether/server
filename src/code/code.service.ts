@@ -1,0 +1,68 @@
+import { HttpService } from '@nestjs/axios';
+import { Injectable } from '@nestjs/common';
+import { firstValueFrom } from 'rxjs';
+import { ExecuteCodeDto } from './dto/execute-code.dto';
+import { PrismaService } from 'src/prisma/prisma.service';
+
+@Injectable()
+export class CodeService {
+  private readonly judge0Url = 'https://judge0-ce.p.rapidapi.com/submissions';
+  private readonly headers = {
+    'Content-Type': 'application/json',
+    'X-RapidAPI-Key': process.env.JUDGE0_API_KEY,
+    'X-RapidAPI-Host': 'judge0-ce.p.rapidapi.com',
+  };
+
+  constructor(
+    private readonly httpService: HttpService,
+    private readonly prisma: PrismaService,
+  ) {}
+
+  async executeCode(language: string, sourceCode: string): Promise<string> {
+    const langId = this.getLanguageId(language);
+    const submission = {
+      source_code: sourceCode,
+      language_id: langId,
+    };
+
+    const { data: submitRes } = await firstValueFrom(
+      this.httpService.post(`${this.judge0Url}?base64_encoded=false&wait=true`, submission, {
+        headers: this.headers,
+      }),
+    );
+
+    return submitRes.stdout || submitRes.stderr || 'No output';
+  }
+
+  private getLanguageId(language: string): number {
+    const langMap = {
+      python: 71,
+      javascript: 63,
+      cpp: 54,
+      java: 62,
+    };
+    return langMap[language] ?? 71;
+  }
+  async saveCodeLog(sessionId: number, senderId: number, dto: ExecuteCodeDto) {
+    return this.prisma.codeLog.create({
+      data: {
+        sessionId,
+        senderId,
+        code: dto.code,
+        language: dto.language,
+      },
+    });
+  }
+
+  async getCodeLogs(sessionId: number) {
+    return this.prisma.codeLog.findMany({
+      where: { sessionId },
+      orderBy: { createdAt: 'asc' },
+      include: {
+        sender: {
+          select: { nickname: true },
+        },
+      },
+    });
+  }
+}
