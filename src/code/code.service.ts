@@ -44,12 +44,16 @@ export class CodeService {
     return langMap[language] ?? 71;
   }
   async saveCodeLog(sessionId: number, senderId: number, dto: ExecuteCodeDto) {
-    return this.prisma.codeLog.create({
+    await this.prisma.codeLog.create({
       data: {
-        sessionId,
-        senderId,
         code: dto.code,
         language: dto.language,
+        sender: {
+          connect: { id: senderId },
+        },
+        session: {
+          connect: { id: sessionId },
+        },
       },
     });
   }
