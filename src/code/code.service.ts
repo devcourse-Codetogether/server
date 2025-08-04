@@ -1,6 +1,8 @@
 import { HttpService } from '@nestjs/axios';
 import { Injectable } from '@nestjs/common';
 import { firstValueFrom } from 'rxjs';
+import { ExecuteCodeDto } from './dto/execute-code.dto';
+import { PrismaService } from 'src/prisma/prisma.service';
 
 @Injectable()
 export class CodeService {
@@ -11,7 +13,10 @@ export class CodeService {
     'X-RapidAPI-Host': 'judge0-ce.p.rapidapi.com',
   };
 
-  constructor(private readonly httpService: HttpService) {}
+  constructor(
+    private readonly httpService: HttpService,
+    private readonly prisma: PrismaService,
+  ) {}
 
   async executeCode(language: string, sourceCode: string): Promise<string> {
     const langId = this.getLanguageId(language);
@@ -37,5 +42,27 @@ export class CodeService {
       java: 62,
     };
     return langMap[language] ?? 71;
+  }
+  async saveCodeLog(sessionId: number, senderId: number, dto: ExecuteCodeDto) {
+    return this.prisma.codeLog.create({
+      data: {
+        sessionId,
+        senderId,
+        code: dto.code,
+        language: dto.language,
+      },
+    });
+  }
+
+  async getCodeLogs(sessionId: number) {
+    return this.prisma.codeLog.findMany({
+      where: { sessionId },
+      orderBy: { createdAt: 'asc' },
+      include: {
+        sender: {
+          select: { nickname: true },
+        },
+      },
+    });
   }
 }
