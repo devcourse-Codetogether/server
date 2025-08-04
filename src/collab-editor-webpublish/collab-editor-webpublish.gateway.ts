@@ -1,0 +1,165 @@
+import { ConfigService } from '@nestjs/config';
+import {
+  ConnectedSocket,
+  MessageBody,
+  OnGatewayConnection,
+  OnGatewayDisconnect,
+  SubscribeMessage,
+  WebSocketGateway,
+  WebSocketServer,
+} from '@nestjs/websockets';
+import { Server, Socket } from 'socket.io';
+import { RedisCacheService } from 'src/redis-cache/redis-cache.service';
+import * as Y from 'yjs';
+
+export interface Message {
+  nickname: string;
+  time: string;
+  content: string;
+}
+
+@WebSocketGateway({
+  namespace: '/collab-webpublish',
+  cors: {
+    origin: process.env.CLIENT_HOST, // 반드시 명시
+    credentials: true, // 클라이언트에서 withCredentials: true 쓸 때만
+  },
+})
+export class CollabEditorWebpublishGateway implements OnGatewayConnection, OnGatewayDisconnect {
+  constructor(private readonly redis: RedisCacheService) {}
+  @WebSocketServer()
+  server: Server;
+
+  handleConnection(client: Socket) {
+    console.log('🔌 collab-webpublish- 클라이언트 연결됨:', client.id);
+
+    console.log('🔌 [webpublish] 연결됨:', client.id, client.nsp.name);
+  }
+
+  async handleDisconnect(client: Socket) {
+    console.log(`❌ 연결 끊김: ${client.id}`);
+  }
+
+  @SubscribeMessage('join')
+  onJoin(@MessageBody() payload: { roomId: string }, @ConnectedSocket() client: Socket) {
+    const { roomId } = payload;
+    console.log('Join event');
+    client.join(roomId);
+    console.log('Join Socket Id: ', client.id);
+  }
+
+  @SubscribeMessage('sync')
+  async onSync(
+    @MessageBody() payload: { roomId: string; fileName: string },
+    @ConnectedSocket() client: Socket,
+  ) {
+    const { roomId, fileName } = payload;
+
+    const key = `ydoc-${roomId}-${fileName}`;
+
+    console.log('데이터 동기화:', key);
+    let docUint8 = await this.redis.redisGetDoc(key);
+    let update;
+
+    //서버에 해당 방에 대한 Yjs 문서가 아직 없다면
+    if (!docUint8) {
+      const doc = new Y.Doc();
+      //doc 전체 상태를 직렬화해서 Uint8Array형식으로 변환
+      update = Y.encodeStateAsUpdate(doc);
+      await this.redis.redisUpdateDoc(key, update);
+    } else {
+      update = docUint8;
+    }
+
+    console.log('동기화 Yjs문서:', update);
+    client.emit('sync', update); // 문서 초기 상태 전송
+
+    // 새로 들어온 사용자에게 기존 사용자들 마우스 커서 상태 전송
+    // 특정 roomId 및 channel에 해당하는 값만 전송
+    const Awarenesskey = `awareness-${roomId}-${fileName}*`;
+
+    const syncAwareness = await this.redis.redisGetSyncAwareness(Awarenesskey);
+
+    if ((await syncAwareness).length > 0) {
+      (await syncAwareness).map(awarenessUpdate => {
+        console.log('awreness:', awarenessUpdate);
+        client.emit('awareness-update', awarenessUpdate);
+      });
+    } else {
+    }
+
+    // chat 데이터 동기화 (배열 가져오기)
+    const syncChat = await this.redis.redisGetChat(roomId);
+    if (syncChat) client.emit('chat-sync', syncChat);
+  }
+
+  //  yjs update
+  @SubscribeMessage('update')
+  async onUpdate(
+    @MessageBody() payload: { roomId: string; fileName: string; update: Uint8Array },
+    @ConnectedSocket() client: Socket,
+  ) {
+    const { roomId, fileName, update } = payload;
+    console.log('roomId:', roomId, 'filename:', fileName, 'update:', new Uint8Array(update));
+
+    const key = `ydoc-${roomId}-${fileName}`;
+
+    console.log('key:', key);
+
+    await this.redis.redisUpdateDoc(key, update);
+
+    // Uint8Array 형태로 반영
+    // Y.applyUpdate(doc, update); // 서버에 상태 반영
+    client.to(roomId).emit('update', update); // 같은 방 사용자에게 브로드캐스트
+  }
+
+  // awareness update
+  @SubscribeMessage('awareness-update')
+  async onAwarenessUpdate(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() payload: { roomId: string; fileName: string; update: Uint8Array },
+  ) {
+    const { roomId, fileName, update } = payload;
+
+    const key = `awareness-${client.id}-${roomId}-${fileName}`;
+    console.log('awareness update:', key);
+
+    await this.redis.redisUpdateAwareness(key, update);
+
+    // 같은 방의 다른 사용자에게 전달
+    client.to(roomId).emit('awareness-update', { update, fileName });
+  }
+
+  // awareness remove
+  @SubscribeMessage('awareness-remove')
+  async onAwarenessRemove(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() payload: { roomId: string },
+  ) {
+    const { roomId } = payload;
+
+    const key = `awareness-${client.id}-${roomId}*`;
+
+    await this.redis.redisDeleteAwareness(key);
+  }
+
+  // chat
+  @SubscribeMessage('chat')
+  async onChat(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() payload: { roomId: string; newMessage: Message },
+  ) {
+    const roomId = payload.roomId;
+
+    let newMessage = payload.newMessage;
+
+    console.log('문자 메시지:', newMessage);
+
+    const key = roomId;
+    // 기존 배열이 있으면 가져오고, 없으면 새 배열 생성
+    await this.redis.redisUpdateChat(key, newMessage);
+
+    // 같은 방의 다른 사용자에게 전달
+    client.to(roomId).emit('chat', newMessage);
+  }
+}
