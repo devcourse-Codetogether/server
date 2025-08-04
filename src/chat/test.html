@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Chat Test</title>
+  </head>
+  <body>
+    <h2>💬 채팅 테스트</h2>
+    <label>
+      유저 ID:
+      <input id="userId" type="number" placeholder="예: 101" />
+    </label>
+    <br />
+    <label>
+      닉네임:
+      <input id="nickname" type="text" placeholder="예: 홍길동" />
+    </label>
+    <br />
+    <label>
+      메시지:
+      <input id="msg" type="text" placeholder="메시지를 입력하세요" />
+    </label>
+    <button onclick="sendMessage()">전송</button>
+
+    <ul id="log"></ul>
+
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+    <script>
+      const socket = io('http://localhost:3000', {
+        transports: ['websocket'],
+      });
+
+      socket.on('connect', () => {
+        log('✅ 연결됨: ' + socket.id);
+
+        // 세션 ID 1번에 자동 입장
+        socket.emit('join', 1);
+      });
+
+      socket.on('chat', data => {
+        log(`💬 ${data.senderNickname}: ${data.message}`);
+      });
+
+      function sendMessage() {
+        const senderId = parseInt(document.getElementById('userId').value);
+        const senderName = document.getElementById('nickname').value;
+        const message = document.getElementById('msg').value;
+
+        if (!senderId || !senderName || !message) {
+          alert('모든 항목을 입력해주세요.');
+          return;
+        }
+
+        socket.emit('chat', {
+          sessionId: 1,
+          senderId,
+          message,
+        });
+
+        document.getElementById('msg').value = '';
+      }
+
+      function log(msg) {
+        const li = document.createElement('li');
+        li.innerText = msg;
+        document.getElementById('log').appendChild(li);
+      }
+    </script>
+  </body>
+</html>
