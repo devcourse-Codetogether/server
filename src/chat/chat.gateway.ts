@@ -25,7 +25,7 @@ export class ChatGateway implements OnGatewayInit {
   async afterInit() {
     console.log('ChatGateway 생성됨');
 
-    await this.redisSubClient.pSubscribe('chat-*', (message, channel) => {
+    await this.redisSubClient.pSubscribe('chat-*', message => {
       const parsed = JSON.parse(message);
       const sessionId = parsed.sessionId;
 

@@ -1,6 +1,8 @@
 import { createClient } from 'redis';
 
-export const redisPubClient = createClient();
+export const redisPubClient = createClient({
+  url: `redis://${process.env.REDIS_HOST}:${process.env.REDIS_PORT}`,
+});
 export const redisSubClient = redisPubClient.duplicate();
 
 export const redisProvider = [

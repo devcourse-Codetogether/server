@@ -11,6 +11,7 @@ import { CollabEditorAlgorismGateway } from './collab-editor/collab-editor-algor
 import { AiReviewModule } from './ai-review/ai-review.module';
 import { ChatModule } from './chat/chat.module';
 import { redisProvider } from './redis/redis.provider';
+import { RedisModule } from './redis/redis.module';
 
 @Module({
   imports: [
@@ -21,6 +22,7 @@ import { redisProvider } from './redis/redis.provider';
     SessionModule,
     AiReviewModule,
     ChatModule,
+    RedisModule,
   ],
   controllers: [AppController],
   providers: [
