@@ -5,9 +5,15 @@ import { CollabEditorAlgorismGateway } from './collab-editor/collab-editor-algor
 import { CollabEditorWebpublishGateway } from './collab-editor-webpublish/collab-editor-webpublish.gateway';
 import { RedisCacheModule } from './redis-cache/redis-cache.module';
 import { RedisCacheService } from './redis-cache/redis-cache.service';
+import { ConfigModule } from '@nestjs/config';
 
 @Module({
-  imports: [RedisCacheModule],
+  imports: [
+    ConfigModule.forRoot({
+      isGlobal: true, // 다른 모듈에서도 ConfigService 주입 없이 사용 가능
+    }),
+    RedisCacheModule,
+  ],
   controllers: [AppController],
   providers: [
     AppService,

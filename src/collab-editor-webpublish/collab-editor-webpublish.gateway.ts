@@ -1,3 +1,4 @@
+import { ConfigService } from '@nestjs/config';
 import {
   ConnectedSocket,
   MessageBody,
@@ -20,7 +21,7 @@ export interface Message {
 @WebSocketGateway({
   namespace: '/collab-webpublish',
   cors: {
-    origin: 'http://localhost:5173', // 반드시 명시
+    origin: process.env.CLIENT_HOST, // 반드시 명시
     credentials: true, // 클라이언트에서 withCredentials: true 쓸 때만
   },
 })
