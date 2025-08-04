@@ -58,7 +58,6 @@ export class SessionService {
       throw new NotFoundException('세션이 존재하지 않거나 종료되었습니다.');
     }
 
-    // 이미 참가한 유저인지 확인
     const alreadyJoined = session.participants.some(p => p.id === userId);
     if (!alreadyJoined) {
       await this.prisma.session.update({
@@ -91,7 +90,21 @@ export class SessionService {
       where: { id: sessionId },
       data: {
         isEnded: true,
-        // codeLogs, chatLogs는 나중에 업데이트
+      },
+    });
+  }
+  async getRecentMessages(sessionId: number, limit = 15) {
+    return this.prisma.chatMessage.findMany({
+      where: { sessionId },
+      orderBy: { createdAt: 'desc' },
+      take: limit,
+      include: {
+        sender: {
+          select: {
+            id: true,
+            nickname: true,
+          },
+        },
       },
     });
   }

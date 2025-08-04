@@ -41,4 +41,13 @@ export class SessionController {
   endSession(@User() user: UserDto, @Param('sessionId') sessionId: number) {
     return this.sessionService.endSession(user.id, Number(sessionId));
   }
+  @Get('/:sessionId/chats')
+  async getRecentChats(
+    @Param('sessionId', ParseIntPipe) sessionId: number,
+    @Query('limit') limit?: string,
+  ) {
+    const take = limit ? parseInt(limit, 10) : 15;
+    const messages = await this.sessionService.getRecentMessages(sessionId, take);
+    return messages;
+  }
 }

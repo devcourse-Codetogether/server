@@ -27,4 +27,19 @@ export class ChatService {
       },
     });
   }
+  async getRecentMessages(sessionId: number, limit = 15) {
+    return this.prisma.chatMessage.findMany({
+      where: { sessionId },
+      orderBy: { createdAt: 'desc' },
+      take: limit,
+      include: {
+        sender: {
+          select: {
+            id: true,
+            nickname: true,
+          },
+        },
+      },
+    });
+  }
 }
