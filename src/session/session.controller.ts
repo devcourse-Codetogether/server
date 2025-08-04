@@ -41,6 +41,7 @@ export class SessionController {
   endSession(@User() user: UserDto, @Param('sessionId') sessionId: number) {
     return this.sessionService.endSession(user.id, Number(sessionId));
   }
+  @UseGuards(JwtAuthGuard)
   @Get('/:sessionId/chats')
   async getRecentChats(
     @Param('sessionId', ParseIntPipe) sessionId: number,
