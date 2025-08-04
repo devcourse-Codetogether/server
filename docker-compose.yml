@@ -1,6 +1,13 @@
 version: '3.8'
 
 services:
+  redis:
+    image: redis
+    container_name: codetogether-redis
+    ports:
+      - '6379:6379'
+    restart: always
+
   backend:
     container_name: codetogether-backend
     build: .
@@ -8,16 +15,6 @@ services:
       - '3000:3000'
     env_file:
       - .env
-    restart: always
     depends_on:
       - redis
-    environment:
-      REDIS_HOST: redis
-      REDIS_PORT: 6379
-
-  redis:
-    container_name: codetogether-redis
-    image: redis:7
-    ports:
-      - '6379:6379'
     restart: always
