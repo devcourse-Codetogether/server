@@ -13,8 +13,8 @@ import { CodeModule } from './code/code.module';
 import { SessionModule } from './session/session.module';
 import { CollabEditorAlgorismGateway } from './collab-editor/collab-editor-algorism.gateway';
 import { AiReviewModule } from './ai-review/ai-review.module';
-import { ChatModule } from './chat/chat.module';
-import { redisProvider } from './redis/redis.provider';
+// import { ChatModule } from './chat/chat.module';
+// import { redisProvider } from './redis/redis.provider';
 
 @Module({
   imports: [
@@ -28,7 +28,7 @@ import { redisProvider } from './redis/redis.provider';
     CodeModule,
     SessionModule,
     AiReviewModule,
-    ChatModule,
+    // ChatModule,
   ],
   controllers: [AppController],
   providers: [
@@ -36,7 +36,7 @@ import { redisProvider } from './redis/redis.provider';
     CollabEditorWebpublishGateway,
     CollabEditorAlgorismGateway,
     RedisCacheService,
-    ...redisProvider,
+    // ...redisProvider,
   ],
 })
 export class AppModule {}
