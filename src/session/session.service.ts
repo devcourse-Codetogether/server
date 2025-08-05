@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateSessionDto } from './dto/create-session.dto';
+import { last } from 'rxjs';
 
 @Injectable()
 export class SessionService {
@@ -24,6 +25,7 @@ export class SessionService {
         id: s.id,
         title: s.title,
         mode: s.mode,
+        language: s.language,
         participants: s.participants.length,
       })),
       total,
