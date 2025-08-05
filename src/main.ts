@@ -1,7 +1,7 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
-import * as cookieParser from 'cookie-parser';
+// import * as cookieParser from 'cookie-parser';
 
 const config = new DocumentBuilder()
   .setTitle('CodeTogether API')
@@ -16,7 +16,7 @@ async function bootstrap() {
     origin: ['http://localhost:5173', 'https://codetogether-fulldevcourse.vercel.app'],
     credentials: true,
   });
-  app.use(cookieParser());
+  // app.use(cookieParser());
   const document = SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('docs', app, document);
 
