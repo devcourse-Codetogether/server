@@ -48,6 +48,19 @@ export class CollabEditorWebpublishGateway implements OnGatewayConnection, OnGat
     console.log('Join Socket Id: ', client.id);
   }
 
+  @SubscribeMessage('chat-sync')
+  async onChatSync(@MessageBody() payload: { roomId: string }, @ConnectedSocket() client: Socket) {
+    const { roomId } = payload;
+
+    const key = `chat-${roomId}`;
+
+    console.log('데이터 동기화:', key);
+
+    // chat 데이터 동기화 (배열 가져오기)
+    const syncChat = await this.redis.redisGetChat(key);
+    if (syncChat) client.emit('chat-sync', syncChat);
+  }
+
   @SubscribeMessage('sync')
   async onSync(
     @MessageBody() payload: { roomId: string; fileName: string },
@@ -58,17 +71,17 @@ export class CollabEditorWebpublishGateway implements OnGatewayConnection, OnGat
     const key = `ydoc-${roomId}-${fileName}`;
 
     console.log('데이터 동기화:', key);
-    let docUint8 = await this.redis.redisGetDoc(key);
+    let syncDoc = await this.redis.redisGetDoc(key);
     let update;
 
     //서버에 해당 방에 대한 Yjs 문서가 아직 없다면
-    if (!docUint8) {
+    if (!syncDoc) {
       const doc = new Y.Doc();
       //doc 전체 상태를 직렬화해서 Uint8Array형식으로 변환
       update = Y.encodeStateAsUpdate(doc);
       await this.redis.redisUpdateDoc(key, update);
     } else {
-      update = docUint8;
+      update = syncDoc;
     }
 
     console.log('동기화 Yjs문서:', update);
@@ -87,10 +100,6 @@ export class CollabEditorWebpublishGateway implements OnGatewayConnection, OnGat
       });
     } else {
     }
-
-    // chat 데이터 동기화 (배열 가져오기)
-    const syncChat = await this.redis.redisGetChat(roomId);
-    if (syncChat) client.emit('chat-sync', syncChat);
   }
 
   //  yjs update
@@ -106,7 +115,23 @@ export class CollabEditorWebpublishGateway implements OnGatewayConnection, OnGat
 
     console.log('key:', key);
 
-    await this.redis.redisUpdateDoc(key, update);
+    // 기존 데이터 가져오기
+    const beforeYdoc = await this.redis.redisGetDoc(key);
+
+    const doc = new Y.Doc();
+
+    // 기존 상태 있으면 먼저 적용
+    if (beforeYdoc) {
+      Y.applyUpdate(doc, new Uint8Array(beforeYdoc));
+    }
+
+    // 이후 다시 update 적용
+    Y.applyUpdate(doc, new Uint8Array(new Uint8Array(update)));
+
+    // 병합된 전체 상태를 Redis에 다시 저장
+    const mergedUpdate = Y.encodeStateAsUpdate(doc);
+
+    await this.redis.redisUpdateDoc(key, mergedUpdate);
 
     // Uint8Array 형태로 반영
     // Y.applyUpdate(doc, update); // 서버에 상태 반영
@@ -155,7 +180,8 @@ export class CollabEditorWebpublishGateway implements OnGatewayConnection, OnGat
 
     console.log('문자 메시지:', newMessage);
 
-    const key = roomId;
+    const key = `chat-${roomId}`;
+
     // 기존 배열이 있으면 가져오고, 없으면 새 배열 생성
     await this.redis.redisUpdateChat(key, newMessage);
 
