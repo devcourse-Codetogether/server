@@ -11,6 +11,6 @@ export class UserController {
   @UseGuards(JwtAuthGuard)
   @Get('me/sessions')
   async getMySessions(@User() user: UserDto) {
-    return this.userService.getMySessions(user.id);
+    // return this.userService.getMySessions(user.id);
   }
 }

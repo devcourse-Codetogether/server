@@ -1,7 +1,13 @@
 import { Inject, Injectable, OnModuleInit } from '@nestjs/common';
 import Redis from 'ioredis';
-import { Message } from 'src/collab-editor-webpublish/collab-editor-webpublish.gateway';
+// import { Message } from 'src/collab-editor-webpublish/collab-editor-webpublish.gateway';
 import { buffer, json } from 'stream/consumers';
+
+interface Message {
+  nickname: string;
+  time: string;
+  content: string;
+}
 
 @Injectable()
 export class RedisCacheService implements OnModuleInit {
@@ -23,15 +29,14 @@ export class RedisCacheService implements OnModuleInit {
   // Doc 조회
   redisGetDoc = async (key: string) => {
     const doc = await this.redis.getBuffer(key);
-
-    return doc && new Uint8Array(doc);
+    return doc;
   };
 
   // Doc 값 업데이트
   redisUpdateDoc = async (key: string, value: Uint8Array) => {
     const binary = Buffer.from(value);
+    console.log('doc 업데이트:', key);
     const result = await this.redis.set(key, binary);
-
     console.log('Y Doc 값 :', result);
   };
 
