@@ -45,7 +45,7 @@ export class ChatGateway implements OnGatewayInit {
   @SubscribeMessage('chat')
   async handleMessage(
     @MessageBody()
-    data: { sessionId: number; senderId: number; message: string },
+    data: { sessionId: string; senderId: number; message: string },
     @ConnectedSocket() client: Socket,
   ) {
     const saved = await this.chatService.saveMessage(data);

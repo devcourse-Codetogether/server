@@ -7,6 +7,6 @@ export class ChatController {
 
   @Get(':sessionId')
   async getChatLogs(@Param('sessionId') sessionId: string) {
-    return this.chatService.getMessagesBySession(Number(sessionId));
+    return this.chatService.getMessagesBySession(sessionId);
   }
 }

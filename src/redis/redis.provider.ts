@@ -1,4 +1,4 @@
-// redis.provider.ts
+//redis.provider.ts;
 import { createClient } from 'redis';
 
 export const redisProvider = [
@@ -6,7 +6,7 @@ export const redisProvider = [
     provide: 'REDIS_PUB_CLIENT',
     useFactory: async () => {
       const client = createClient({
-        url: `redis://${process.env.REDIS_HOST}:${process.env.REDIS_PORT}`,
+        url: `redis://:${process.env.REDIS_PASSWORD}@${process.env.REDIS_HOST}:${process.env.REDIS_PORT}`,
       });
       await client.connect();
       return client;
@@ -16,7 +16,7 @@ export const redisProvider = [
     provide: 'REDIS_SUB_CLIENT',
     useFactory: async () => {
       const client = createClient({
-        url: `redis://${process.env.REDIS_HOST}:${process.env.REDIS_PORT}`,
+        url: `redis://:${process.env.REDIS_PASSWORD}@${process.env.REDIS_HOST}:${process.env.REDIS_PORT}`,
       });
       await client.connect();
       return client;

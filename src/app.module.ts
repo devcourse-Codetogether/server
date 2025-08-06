@@ -15,6 +15,7 @@ import { CollabEditorAlgorismGateway } from './collab-editor/collab-editor-algor
 import { AiReviewModule } from './ai-review/ai-review.module';
 import { ChatModule } from './chat/chat.module';
 import { redisProvider } from './redis/redis.provider';
+import { CollabEditorWebpublishService } from './collab-editor-webpublish/collab-editor-webpublish.service';
 
 @Module({
   imports: [
@@ -37,6 +38,7 @@ import { redisProvider } from './redis/redis.provider';
     CollabEditorAlgorismGateway,
     RedisCacheService,
     ...redisProvider,
+    CollabEditorWebpublishService,
   ],
 })
 export class AppModule {}
