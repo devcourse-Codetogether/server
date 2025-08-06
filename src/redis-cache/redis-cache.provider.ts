@@ -9,7 +9,8 @@ export const RedisCacheProvider = {
     return new Redis({
       host: configService.get<string>('REDIS_HOST'),
       port: parseInt(configService.get<string>('REDIS_PORT') || '6379'),
-      password: configService.get<string>('REDIS_PASSWORD') || undefined,
+      // 나중에 추가할 것
+      // password: configService.get<string>('REDIS_PASSWORD') || undefined,
     });
   },
 };
