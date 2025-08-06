@@ -72,6 +72,9 @@ export class SessionService {
     return {
       id: session.id,
       title: session.title,
+      mode: session.mode,
+      language: session.language,
+      ownerId: session.ownerId,
       alreadyJoined,
       participants: session.participants.map(p => ({
         id: p.id,
