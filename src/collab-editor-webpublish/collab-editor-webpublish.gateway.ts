@@ -11,6 +11,9 @@ import {
 import { Server, Socket } from 'socket.io';
 import { RedisCacheService } from 'src/redis-cache/redis-cache.service';
 import * as Y from 'yjs';
+import { CollabEditorWebpublishService } from './collab-editor-webpublish.service';
+import { ChatService } from 'src/chat/chat.service';
+import { identity } from 'rxjs';
 
 export interface Message {
   nickname: string;
@@ -26,7 +29,12 @@ export interface Message {
   },
 })
 export class CollabEditorWebpublishGateway implements OnGatewayConnection, OnGatewayDisconnect {
-  constructor(private readonly redis: RedisCacheService) {}
+  constructor(
+    private readonly redis: RedisCacheService,
+    private readonly collabService: CollabEditorWebpublishService,
+    private readonly chatService: ChatService,
+  ) {}
+
   @WebSocketServer()
   server: Server;
 
@@ -58,7 +66,27 @@ export class CollabEditorWebpublishGateway implements OnGatewayConnection, OnGat
 
     // chat 데이터 동기화 (배열 가져오기)
     const syncChat = await this.redis.redisGetChat(key);
-    if (syncChat) client.emit('chat-sync', syncChat);
+    // 만약 redis에 없으면 DB에서 가져오기
+    if (syncChat.length === 0) {
+      const messages = await this.chatService.getMessagesBySession(roomId);
+      console.log('Messages:', messages);
+
+      const arrMessages: Message[] = [];
+
+      messages.map(msg => {
+        const {
+          message,
+          createdAt,
+          sender: { nickname },
+        } = msg;
+        const newMsg = { nickname, time: createdAt.toLocaleTimeString(), content: message };
+
+        arrMessages.push(newMsg);
+      });
+      client.emit('chat-sync', arrMessages);
+    } else {
+      client.emit('chat-sync', syncChat);
+    }
   }
 
   @SubscribeMessage('sync')
@@ -71,14 +99,27 @@ export class CollabEditorWebpublishGateway implements OnGatewayConnection, OnGat
     const key = `ydoc-${roomId}-${fileName}`;
 
     console.log('데이터 동기화:', key);
+
+    // redis에서 doc값 가져오기
     let syncDoc = await this.redis.redisGetDoc(key);
     let update;
 
-    //서버에 해당 방에 대한 Yjs 문서가 아직 없다면
     if (!syncDoc) {
-      const doc = new Y.Doc();
-      //doc 전체 상태를 직렬화해서 Uint8Array형식으로 변환
-      update = Y.encodeStateAsUpdate(doc);
+      // DB에서 가져오기
+      const dbGetDoc = await this.collabService.getDoc({ roomId, fileName });
+      // 만약 DB에도 없으면 doc 인스턴스 새로 생성
+      if (!dbGetDoc) {
+        const doc = new Y.Doc();
+        //doc 전체 상태를 직렬화해서 Uint8Array형식으로 변환
+        update = Y.encodeStateAsUpdate(doc);
+        //db에 저장
+        const result = await this.collabService.createDoc({ roomId, fileName, update });
+        console.log('result:', result);
+      } else {
+        console.log('db에서 doc 데이터 가져옴:', dbGetDoc.binaryDoc);
+        update = new Uint8Array(dbGetDoc.binaryDoc);
+      }
+
       await this.redis.redisUpdateDoc(key, update);
     } else {
       update = syncDoc;
@@ -109,7 +150,16 @@ export class CollabEditorWebpublishGateway implements OnGatewayConnection, OnGat
     @ConnectedSocket() client: Socket,
   ) {
     const { roomId, fileName, update } = payload;
-    console.log('roomId:', roomId, 'filename:', fileName, 'update:', new Uint8Array(update));
+    console.log(
+      'roomId:',
+      roomId,
+      'filename:',
+      fileName,
+      'clientId:',
+      client.id,
+      'client:',
+      new Uint8Array(update),
+    );
 
     const key = `ydoc-${roomId}-${fileName}`;
 
@@ -126,12 +176,16 @@ export class CollabEditorWebpublishGateway implements OnGatewayConnection, OnGat
     }
 
     // 이후 다시 update 적용
-    Y.applyUpdate(doc, new Uint8Array(new Uint8Array(update)));
+    Y.applyUpdate(doc, new Uint8Array(update));
 
     // 병합된 전체 상태를 Redis에 다시 저장
     const mergedUpdate = Y.encodeStateAsUpdate(doc);
 
+    //redis 저장
     await this.redis.redisUpdateDoc(key, mergedUpdate);
+
+    //db 저장
+    await this.collabService.updateDoc({ roomId, fileName, mergedUpdate });
 
     // Uint8Array 형태로 반영
     // Y.applyUpdate(doc, update); // 서버에 상태 반영
@@ -172,18 +226,26 @@ export class CollabEditorWebpublishGateway implements OnGatewayConnection, OnGat
   @SubscribeMessage('chat')
   async onChat(
     @ConnectedSocket() client: Socket,
-    @MessageBody() payload: { roomId: string; newMessage: Message },
+    @MessageBody() payload: { roomId: string; newMessage: Message; userId: number },
   ) {
     const roomId = payload.roomId;
 
     let newMessage = payload.newMessage;
 
+    const userId = payload.userId;
+
     console.log('문자 메시지:', newMessage);
+    console.log('userId:', userId);
 
     const key = `chat-${roomId}`;
 
     // 기존 배열이 있으면 가져오고, 없으면 새 배열 생성
     await this.redis.redisUpdateChat(key, newMessage);
+
+    const msgData = { sessionId: roomId, senderId: userId, message: newMessage.content };
+
+    // DB 저장
+    const result = this.chatService.saveMessage(msgData);
 
     // 같은 방의 다른 사용자에게 전달
     client.to(roomId).emit('chat', newMessage);

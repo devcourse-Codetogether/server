@@ -8,6 +8,8 @@ import { redisProvider } from 'src/redis/redis.provider';
 
 @Module({
   providers: [ChatGateway, ChatService, PrismaService, ...redisProvider],
+  //   providers: [ChatGateway, ChatService, PrismaService],
   controllers: [ChatController],
+  exports: [ChatService],
 })
 export class ChatModule {}
