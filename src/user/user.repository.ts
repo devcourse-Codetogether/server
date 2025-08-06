@@ -11,6 +11,8 @@ export class UserRepository {
     id: true,
     title: true,
     createdAt: true,
+    language: true,
+    mode: true,
     owner: {
       select: { nickname: true },
     },
