@@ -18,6 +18,31 @@ export class UserService {
   async getMySessions(userId: number) {
     return this.userRepository.findUserSessions(userId);
   }
+  async getMessages(sessionId: number) {
+    return this.prisma.chatMessage.findMany({
+      where: { sessionId },
+      orderBy: { createdAt: 'desc' },
+      include: {
+        sender: {
+          select: {
+            id: true,
+            nickname: true,
+          },
+        },
+      },
+    });
+  }
+  async getCodeLogs(sessionId: number) {
+    return this.prisma.codeLog.findMany({
+      where: { sessionId },
+      orderBy: { createdAt: 'asc' },
+      include: {
+        sender: {
+          select: { nickname: true },
+        },
+      },
+    });
+  }
   async findByKakaoId(kakaoId: number) {
     return this.prisma.user.findUnique({
       where: { kakaoId },

@@ -95,11 +95,10 @@ export class SessionService {
       },
     });
   }
-  async getRecentMessages(sessionId: number, limit = 15) {
+  async getMessages(sessionId: number) {
     return this.prisma.chatMessage.findMany({
       where: { sessionId },
       orderBy: { createdAt: 'desc' },
-      take: limit,
       include: {
         sender: {
           select: {

@@ -22,9 +22,4 @@ export class CodeController {
   ) {
     return this.codeService.saveCodeLog(+sessionId, user.id, dto);
   }
-  @UseGuards(JwtAuthGuard)
-  @Get()
-  async getCodeLogs(@Param('sessionId') sessionId: string) {
-    return this.codeService.getCodeLogs(+sessionId);
-  }
 }
