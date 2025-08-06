@@ -35,6 +35,8 @@ export class UserRepository {
     const shape = (s: any) => ({
       id: s.id,
       title: s.title,
+      language: s.language,
+      mode: s.mode,
       createdAt: s.createdAt,
       ownerNickname: s.owner?.nickname ?? null,
     });
