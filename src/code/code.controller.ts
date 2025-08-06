@@ -14,17 +14,12 @@ export class CodeController {
     return { output: result };
   }
   @UseGuards(JwtAuthGuard)
-  @Put()
+  @Put('save')
   async saveCode(
     @Param('sessionId') sessionId: string,
     @Body() dto: ExecuteCodeDto,
     @User() user: any,
   ) {
     return this.codeService.saveCodeLog(+sessionId, user.id, dto);
-  }
-  @UseGuards(JwtAuthGuard)
-  @Get()
-  async getCodeLogs(@Param('sessionId') sessionId: string) {
-    return this.codeService.getCodeLogs(+sessionId);
   }
 }
