@@ -61,6 +61,7 @@ export class SessionService {
     }
 
     const alreadyJoined = session.participants.some(p => p.id === userId);
+
     if (!alreadyJoined) {
       await this.prisma.session.update({
         where: { id: sessionId },
@@ -68,11 +69,13 @@ export class SessionService {
           participants: { connect: { id: userId } },
         },
       });
+      session.participants.push({ id: userId, nickname: '' } as any);
     }
 
     return {
       id: session.id,
       title: session.title,
+      alreadyJoined,
       participants: session.participants.map(p => ({
         id: p.id,
         nickname: p.nickname,
@@ -92,20 +95,6 @@ export class SessionService {
       where: { id: sessionId },
       data: {
         isEnded: true,
-      },
-    });
-  }
-  async getMessages(sessionId: number) {
-    return this.prisma.chatMessage.findMany({
-      where: { sessionId },
-      orderBy: { createdAt: 'desc' },
-      include: {
-        sender: {
-          select: {
-            id: true,
-            nickname: true,
-          },
-        },
       },
     });
   }

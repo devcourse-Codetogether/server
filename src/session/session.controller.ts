@@ -31,8 +31,8 @@ export class SessionController {
   }
 
   @UseGuards(JwtAuthGuard)
-  @Post(':id/join')
-  joinSessionById(@User() user: UserDto, @Param('id', ParseIntPipe) sessionId: number) {
+  @Post(':sessionId/join')
+  joinSessionById(@User() user: UserDto, @Param('sessionId', ParseIntPipe) sessionId: number) {
     return this.sessionService.joinSessionById(user.id, sessionId);
   }
 
