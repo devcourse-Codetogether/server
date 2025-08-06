@@ -14,7 +14,7 @@ export class CodeController {
     return { output: result };
   }
   @UseGuards(JwtAuthGuard)
-  @Put()
+  @Put('save')
   async saveCode(
     @Param('sessionId') sessionId: string,
     @Body() dto: ExecuteCodeDto,
