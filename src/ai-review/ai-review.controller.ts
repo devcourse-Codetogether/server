@@ -10,12 +10,8 @@ export class AiReviewController {
 
   @UseGuards(JwtAuthGuard)
   @Post('review')
-  async reviewCode(
-    @User() user: UserDto,
-    @Param('sessionId', ParseIntPipe) sessionId: number,
-    @Body('question') question: string,
-  ) {
-    return this.aiReviewService.reviewCode(sessionId, question);
+  async reviewCode(@User() user: UserDto, @Param('sessionId', ParseIntPipe) sessionId: number) {
+    return this.aiReviewService.reviewCode(sessionId);
   }
   @UseGuards(JwtAuthGuard)
   @Post('question')
