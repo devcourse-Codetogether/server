@@ -13,8 +13,9 @@ import { CodeModule } from './code/code.module';
 import { SessionModule } from './session/session.module';
 import { CollabEditorAlgorismGateway } from './collab-editor/collab-editor-algorism.gateway';
 import { AiReviewModule } from './ai-review/ai-review.module';
-// import { ChatModule } from './chat/chat.module';
-// import { redisProvider } from './redis/redis.provider';
+import { ChatModule } from './chat/chat.module';
+import { redisProvider } from './redis/redis.provider';
+import { CollabEditorWebpublishService } from './collab-editor-webpublish/collab-editor-webpublish.service';
 
 @Module({
   imports: [
@@ -28,7 +29,7 @@ import { AiReviewModule } from './ai-review/ai-review.module';
     CodeModule,
     SessionModule,
     AiReviewModule,
-    // ChatModule,
+    ChatModule,
   ],
   controllers: [AppController],
   providers: [
@@ -36,7 +37,8 @@ import { AiReviewModule } from './ai-review/ai-review.module';
     CollabEditorWebpublishGateway,
     CollabEditorAlgorismGateway,
     RedisCacheService,
-    // ...redisProvider,
+    ...redisProvider,
+    CollabEditorWebpublishService,
   ],
 })
 export class AppModule {}

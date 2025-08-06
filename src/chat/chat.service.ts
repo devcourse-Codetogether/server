@@ -1,30 +1,36 @@
-// import { Injectable } from '@nestjs/common';
-// import { PrismaService } from 'src/prisma/prisma.service';
+import { Injectable } from '@nestjs/common';
+import { PrismaService } from 'src/prisma/prisma.service';
 
-// @Injectable()
-// export class ChatService {
-//   constructor(private readonly prisma: PrismaService) {}
+@Injectable()
+export class ChatService {
+  constructor(private readonly prisma: PrismaService) {}
 
-//   async saveMessage(data: { sessionId: number; senderId: number; message: string }) {
-//     return this.prisma.chatMessage.create({
-//       data: {
-//         session: { connect: { id: data.sessionId } },
-//         sender: { connect: { id: data.senderId } },
-//         message: data.message,
-//       },
-//       include: {
-//         sender: { select: { id: true, nickname: true } },
-//       },
-//     });
-//   }
+  // 데이터 저장
+  async saveMessage(data: { sessionId: string; senderId: number; message: string }) {
+    const sessionId = parseInt(data.sessionId);
 
-//   async getMessagesBySession(sessionId: number) {
-//     return this.prisma.chatMessage.findMany({
-//       where: { sessionId },
-//       orderBy: { createdAt: 'asc' },
-//       include: {
-//         sender: { select: { id: true, nickname: true } },
-//       },
-//     });
-//   }
-// }
+    return this.prisma.chatMessage.create({
+      data: {
+        session: { connect: { id: sessionId } },
+        sender: { connect: { id: data.senderId } },
+        message: data.message,
+      },
+      include: {
+        sender: { select: { id: true, nickname: true } },
+      },
+    });
+  }
+
+  // 데이터 불러오기
+  async getMessagesBySession(sessionId: string) {
+    const sessionIdInt = parseInt(sessionId);
+
+    return this.prisma.chatMessage.findMany({
+      where: { sessionId: sessionIdInt },
+      orderBy: { createdAt: 'asc' },
+      include: {
+        sender: { select: { id: true, nickname: true } },
+      },
+    });
+  }
+}
