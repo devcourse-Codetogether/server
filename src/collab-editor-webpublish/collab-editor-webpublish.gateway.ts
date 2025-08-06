@@ -1,4 +1,3 @@
-import { ConfigService } from '@nestjs/config';
 import {
   ConnectedSocket,
   MessageBody,
@@ -13,7 +12,6 @@ import { RedisCacheService } from 'src/redis-cache/redis-cache.service';
 import * as Y from 'yjs';
 import { CollabEditorWebpublishService } from './collab-editor-webpublish.service';
 import { ChatService } from 'src/chat/chat.service';
-import { identity } from 'rxjs';
 
 export interface Message {
   nickname: string;
