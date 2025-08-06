@@ -35,10 +35,4 @@ export class SessionController {
   joinSessionById(@User() user: UserDto, @Param('sessionId', ParseIntPipe) sessionId: number) {
     return this.sessionService.joinSessionById(user.id, sessionId);
   }
-
-  @UseGuards(JwtAuthGuard)
-  @Patch(':sessionId/end')
-  endSession(@User() user: UserDto, @Param('sessionId') sessionId: number) {
-    return this.sessionService.endSession(user.id, Number(sessionId));
-  }
 }

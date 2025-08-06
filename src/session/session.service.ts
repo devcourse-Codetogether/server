@@ -8,16 +8,14 @@ export class SessionService {
   constructor(private readonly prisma: PrismaService) {}
 
   async getSessionList(page: number, limit: number) {
-    const [sessions, total] = await Promise.all([
+    const [sessions] = await Promise.all([
       this.prisma.session.findMany({
-        where: { isEnded: false },
         skip: (page - 1) * limit,
         take: limit,
         include: {
           participants: true,
         },
       }),
-      this.prisma.session.count({ where: { isEnded: false } }),
     ]);
 
     return {
@@ -28,7 +26,6 @@ export class SessionService {
         language: s.language,
         participants: s.participants.length,
       })),
-      total,
     };
   }
 
@@ -56,8 +53,8 @@ export class SessionService {
       include: { participants: true },
     });
 
-    if (!session || session.isEnded) {
-      throw new NotFoundException('세션이 존재하지 않거나 종료되었습니다.');
+    if (!session) {
+      throw new NotFoundException('세션이 존재하지 않습니다.');
     }
 
     const alreadyJoined = session.participants.some(p => p.id === userId);
@@ -81,21 +78,5 @@ export class SessionService {
         nickname: p.nickname,
       })),
     };
-  }
-
-  async endSession(userId: number, sessionId: number) {
-    const session = await this.prisma.session.findUnique({
-      where: { id: sessionId },
-    });
-
-    if (!session) throw new NotFoundException('세션을 찾을 수 없습니다.');
-    if (session.ownerId !== userId) throw new ForbiddenException('세션 종료 권한이 없습니다.');
-
-    return this.prisma.session.update({
-      where: { id: sessionId },
-      data: {
-        isEnded: true,
-      },
-    });
   }
 }
