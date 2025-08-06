@@ -185,7 +185,7 @@ export class CollabEditorWebpublishGateway implements OnGatewayConnection, OnGat
     await this.redis.redisUpdateDoc(key, mergedUpdate);
 
     //db 저장
-    await this.collabService.updateDoc({ roomId, fileName, mergedUpdate });
+    this.collabService.updateDoc({ roomId, fileName, mergedUpdate });
 
     // Uint8Array 형태로 반영
     // Y.applyUpdate(doc, update); // 서버에 상태 반영
