@@ -5,10 +5,13 @@ import { PrismaService } from 'src/prisma/prisma.service';
 export class ChatService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async saveMessage(data: { sessionId: number; senderId: number; message: string }) {
+  // 데이터 저장
+  async saveMessage(data: { sessionId: string; senderId: number; message: string }) {
+    const sessionId = parseInt(data.sessionId);
+
     return this.prisma.chatMessage.create({
       data: {
-        session: { connect: { id: data.sessionId } },
+        session: { connect: { id: sessionId } },
         sender: { connect: { id: data.senderId } },
         message: data.message,
       },
@@ -18,9 +21,12 @@ export class ChatService {
     });
   }
 
-  async getMessagesBySession(sessionId: number) {
+  // 데이터 불러오기
+  async getMessagesBySession(sessionId: string) {
+    const sessionIdInt = parseInt(sessionId);
+
     return this.prisma.chatMessage.findMany({
-      where: { sessionId },
+      where: { sessionId: sessionIdInt },
       orderBy: { createdAt: 'asc' },
       include: {
         sender: { select: { id: true, nickname: true } },

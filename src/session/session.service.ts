@@ -1,22 +1,21 @@
 import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateSessionDto } from './dto/create-session.dto';
+import { last } from 'rxjs';
 
 @Injectable()
 export class SessionService {
   constructor(private readonly prisma: PrismaService) {}
 
   async getSessionList(page: number, limit: number) {
-    const [sessions, total] = await Promise.all([
+    const [sessions] = await Promise.all([
       this.prisma.session.findMany({
-        where: { isEnded: false },
         skip: (page - 1) * limit,
         take: limit,
         include: {
           participants: true,
         },
       }),
-      this.prisma.session.count({ where: { isEnded: false } }),
     ]);
 
     return {
@@ -24,9 +23,9 @@ export class SessionService {
         id: s.id,
         title: s.title,
         mode: s.mode,
+        language: s.language,
         participants: s.participants.length,
       })),
-      total,
     };
   }
 
@@ -54,11 +53,12 @@ export class SessionService {
       include: { participants: true },
     });
 
-    if (!session || session.isEnded) {
-      throw new NotFoundException('세션이 존재하지 않거나 종료되었습니다.');
+    if (!session) {
+      throw new NotFoundException('세션이 존재하지 않습니다.');
     }
 
     const alreadyJoined = session.participants.some(p => p.id === userId);
+
     if (!alreadyJoined) {
       await this.prisma.session.update({
         where: { id: sessionId },
@@ -66,46 +66,20 @@ export class SessionService {
           participants: { connect: { id: userId } },
         },
       });
+      session.participants.push({ id: userId, nickname: '' } as any);
     }
 
     return {
       id: session.id,
       title: session.title,
+      mode: session.mode,
+      language: session.language,
+      ownerId: session.ownerId,
+      alreadyJoined,
       participants: session.participants.map(p => ({
         id: p.id,
         nickname: p.nickname,
       })),
     };
-  }
-
-  async endSession(userId: number, sessionId: number) {
-    const session = await this.prisma.session.findUnique({
-      where: { id: sessionId },
-    });
-
-    if (!session) throw new NotFoundException('세션을 찾을 수 없습니다.');
-    if (session.ownerId !== userId) throw new ForbiddenException('세션 종료 권한이 없습니다.');
-
-    return this.prisma.session.update({
-      where: { id: sessionId },
-      data: {
-        isEnded: true,
-      },
-    });
-  }
-  async getRecentMessages(sessionId: number, limit = 15) {
-    return this.prisma.chatMessage.findMany({
-      where: { sessionId },
-      orderBy: { createdAt: 'desc' },
-      take: limit,
-      include: {
-        sender: {
-          select: {
-            id: true,
-            nickname: true,
-          },
-        },
-      },
-    });
   }
 }
