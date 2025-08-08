@@ -15,6 +15,7 @@ async function bootstrap() {
   app.enableCors({
     origin: ['http://localhost:5173', 'https://codetogether-fulldevcourse.vercel.app'],
     credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   });
   app.use(cookieParser());
   const document = SwaggerModule.createDocument(app, config);
